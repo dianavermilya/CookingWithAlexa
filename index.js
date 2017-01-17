@@ -32,23 +32,24 @@ var APP_ID = undefined; //replace with 'amzn1.echo-sdk-ams.app.[your-unique-valu
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript#Inheritance
  */
-var MinecraftHelper = function () {
+var CookSupport = function () {
     AlexaSkill.call(this, APP_ID);
 };
 
 // Extend AlexaSkill
-MinecraftHelper.prototype = Object.create(AlexaSkill.prototype);
-MinecraftHelper.prototype.constructor = MinecraftHelper;
+CookSupport.prototype = Object.create(AlexaSkill.prototype);
+CookSupport.prototype.constructor = CookSupport;
 
-MinecraftHelper.prototype.eventHandlers.onLaunch = function (launchRequest, session, response) {
-    var speechText = "Welcome to the Minecraft Helper. You can ask a question like, what's the recipe for a chest? ... Now, what can I help you with.";
+CookSupport.prototype.eventHandlers.onLaunch = function (launchRequest, session, response) {
+    var speechText = "Welcome to the CookSupport. You can ask a question like, what's the recipe for salad? ... Now, what can I help you with.";
     // If the user either does not reply to the welcome message or says something that is not
     // understood, they will be prompted again with this text.
     var repromptText = "For instructions on what you can say, please say help me.";
     response.ask(speechText, repromptText);
 };
 
-MinecraftHelper.prototype.intentHandlers = {
+
+CookSupport.prototype.intentHandlers = {
     "RecipeIntent": function (intent, session, response) {
         var itemSlot = intent.slots.Item,
             itemName;
@@ -61,11 +62,17 @@ MinecraftHelper.prototype.intentHandlers = {
             speechOutput,
             repromptOutput;
         if (recipe) {
+            session.attributes.recipe = itemName;
+            session.attributes.step = 0;
             speechOutput = {
-                speech: recipe,
+                speech: "Great.  We're ready to get started making " + itemName + ". Say 'What is the next step?' to get started.",
                 type: AlexaSkill.speechOutputType.PLAIN_TEXT
             };
-            response.tellWithCard(speechOutput, cardTitle, recipe);
+            repromptOutput = {
+                speech: "Say 'What is the next step?' to get started.  Ready?",
+                type: AlexaSkill.speechOutputType.PLAIN_TEXT
+            };
+            response.ask(speechOutput, repromptOutput);
         } else {
             var speech;
             if (itemName) {
@@ -85,6 +92,31 @@ MinecraftHelper.prototype.intentHandlers = {
         }
     },
 
+    "StepIntent": function (intent, session, response) {
+        var speech;
+        if (!session.attributes.recipe) {
+            speech = "I'm sorry, I don't have a recipe selected. Let's begin again. What can I help with?";
+        } else {
+            var recipe = recipes[session.attributes.recipe];
+            if (session.attributes.step >= recipe.steps.length) {
+                session.attributes.step = 0;
+                response.tell("Congratulations!  You're all done!");
+                return;
+            }
+            speech = recipe.steps[session.attributes.step].text;
+            session.attributes.step++;
+        } 
+        var speechOutput = {
+            speech: speech,
+            type: AlexaSkill.speechOutputType.PLAIN_TEXT
+        };
+        var repromptOutput = {
+            speech: "Say 'What is the next step?' to hear the next step. What can I help with?",
+            type: AlexaSkill.speechOutputType.PLAIN_TEXT
+        };
+        response.ask(speechOutput, repromptOutput);
+    },
+
     "AMAZON.StopIntent": function (intent, session, response) {
         var speechOutput = "Goodbye";
         response.tell(speechOutput);
@@ -96,8 +128,8 @@ MinecraftHelper.prototype.intentHandlers = {
     },
 
     "AMAZON.HelpIntent": function (intent, session, response) {
-        var speechText = "You can ask questions about minecraft such as, what's the recipe for a chest, or, you can say exit... Now, what can I help you with?";
-        var repromptText = "You can say things like, what's the recipe for a chest, or you can say exit... Now, what can I help you with?";
+        var speechText = "You can ask for recipes, like what's the recipe for salad, or, you can say exit... Now, what can I help you with?";
+        var repromptText = "You can say things like, what's the recipe for salad, or you can say exit... Now, what can I help you with?";
         var speechOutput = {
             speech: speechText,
             type: AlexaSkill.speechOutputType.PLAIN_TEXT
@@ -111,6 +143,6 @@ MinecraftHelper.prototype.intentHandlers = {
 };
 
 exports.handler = function (event, context) {
-    var minecraftHelper = new MinecraftHelper();
-    minecraftHelper.execute(event, context);
+    var cookSupport = new CookSupport();
+    cookSupport.execute(event, context);
 };
